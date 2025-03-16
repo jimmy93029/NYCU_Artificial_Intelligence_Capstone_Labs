@@ -23,9 +23,9 @@ class Config:
     # Default data parameters
     DEFAULT_SYMBOLS = ["BTCUSDT"]
     DEFAULT_INTERVAL = "15m"
-    DEFAULT_START_DATE = "2024-12-01"
+    DEFAULT_START_DATE = "2024-5-01"
     DEFAULT_END_DATE = "2025-02-01"
-    DEFAULT_FILENAME = "klines_BTC.csv"
+    DEFAULT_FILENAME = "klines_BTC_9_months.csv"
 
     # Date format
     DATE_FORMAT = "%Y-%m-%d"
