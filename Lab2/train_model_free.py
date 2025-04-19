@@ -1,6 +1,8 @@
 import gymnasium as gym
 import numpy as np
-from gym.wrappers import GrayScaleObservation, ResizeObservation, FrameStack, RecordVideo
+from gymnasium.wrappers import ResizeObservation, RecordVideo, TransformObservation
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
+import cv2
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.logger import configure
 from stable_baselines3 import PPO, A2C, SAC
@@ -28,12 +30,18 @@ class BipedalWalkerActionConstraint(gym.ActionWrapper):
     def action(self, action):
         return np.clip(action, self.min_action, self.max_action)
 
+
 # === Preprocessing for CarRacing ===
 def preprocess_car_racing(env):
-    env = GrayScaleObservation(env, keep_dim=True)       # (96, 96, 1)
-    env = ResizeObservation(env, shape=(84, 84))          # (84, 84, 1)
-    env = FrameStack(env, num_stack=4)                    # (84, 84, 4)
+    # Convert to grayscale
+    env = TransformObservation(env, lambda obs: cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)[..., None])
+    # Resize to (84, 84)
+    env = ResizeObservation(env, shape=(84, 84))
+    # Wrap in DummyVecEnv and apply VecFrameStack
+    env = DummyVecEnv([lambda: env])
+    env = VecFrameStack(env, n_stack=4)
     return env
+
 
 # === Wrap with Constraints for Training and Evaluation ===
 def wrap_with_constraints(env, env_id, mini=-1, maxi=1):
@@ -44,11 +52,13 @@ def wrap_with_constraints(env, env_id, mini=-1, maxi=1):
         env = BipedalWalkerActionConstraint(env, mini, maxi)
     return env
 
+
 # === Vectorized Environment Creation for Training ===
 def make_custom_env(env_id, mini=-1, maxi=1):
     env = gym.make(env_id)
     env = wrap_with_constraints(env, env_id, mini, maxi)
     return Monitor(env)
+
 
 # === Training Function ===
 def train_sb3(algo, env_id, total_timesteps=100_000, mini=-1, maxi=1):
@@ -71,6 +81,7 @@ def train_sb3(algo, env_id, total_timesteps=100_000, mini=-1, maxi=1):
 
     print(f"✅ Model saved to: {model_path}")
     print(f"📁 Logs stored in: {log_dir}")
+
 
 # === Evaluation Function ===
 def evaluate_sb3(model_class, model_path, env_id, episodes=10, train_min=-1, train_max=1, test_min=-1, test_max=1):
@@ -108,6 +119,8 @@ def evaluate_sb3(model_class, model_path, env_id, episodes=10, train_min=-1, tra
             total_reward += reward
         rewards.append(total_reward)
         print(f"[EVAL] Episode {ep+1} | Reward: {total_reward:.2f}")
+
+    print(f"📊 Mean reward over {len(rewards)} episodes: {np.mean(rewards):.2f}")
 
     env.close()
     print(f"✅ Finished. Video: {video_folder}")
