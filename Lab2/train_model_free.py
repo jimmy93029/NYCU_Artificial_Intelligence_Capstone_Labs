@@ -6,59 +6,10 @@ import cv2
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.logger import configure
 from stable_baselines3 import PPO, A2C, SAC
+from MakeEnv import make_sb3_env, wrap_with_constraints, bipedalwalker_termination_fn
 import os
 
 Base_dir = "info"
-
-# === Constraint Wrappers ===
-class CarRacingSteeringConstraint(gym.ActionWrapper):
-    def __init__(self, env, mini=-0.8, maxi=0.8):
-        super().__init__(env)
-        self.min_steering = mini
-        self.max_steering = maxi
-
-    def action(self, action):
-        action[0] = np.clip(action[0], self.min_steering, self.max_steering)
-        return action
-
-class BipedalWalkerActionConstraint(gym.ActionWrapper):
-    def __init__(self, env, mini=-0.8, maxi=0.8):
-        super().__init__(env)
-        self.min_action = mini
-        self.max_action = maxi
-
-    def action(self, action):
-        return np.clip(action, self.min_action, self.max_action)
-
-
-# === Preprocessing for CarRacing ===
-def preprocess_car_racing(env):
-    # Convert to grayscale
-    env = TransformObservation(env, lambda obs: cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)[..., None])
-    # Resize to (84, 84)
-    env = ResizeObservation(env, shape=(84, 84))
-    # Wrap in DummyVecEnv and apply VecFrameStack
-    env = DummyVecEnv([lambda: env])
-    env = VecFrameStack(env, n_stack=4)
-    return env
-
-
-# === Wrap with Constraints for Training and Evaluation ===
-def wrap_with_constraints(env, env_id, mini=-1, maxi=1):
-    if "CarRacing" in env_id:
-        env = preprocess_car_racing(env)
-        env = CarRacingSteeringConstraint(env, mini, maxi)
-    if "BipedalWalker" in env_id:
-        env = BipedalWalkerActionConstraint(env, mini, maxi)
-    return env
-
-
-# === Vectorized Environment Creation for Training ===
-def make_custom_env(env_id, mini=-1, maxi=1):
-    env = gym.make(env_id)
-    env = wrap_with_constraints(env, env_id, mini, maxi)
-    return Monitor(env)
-
 
 # === Training Function ===
 def train_sb3(algo, env_id, total_timesteps=100_000, mini=-1, maxi=1):
@@ -68,7 +19,7 @@ def train_sb3(algo, env_id, total_timesteps=100_000, mini=-1, maxi=1):
     log_dir = f"{Base_dir}/logs/{env_id.replace('/', '_')}_{algo_name}_min{mini}_max{maxi}"
     os.makedirs(log_dir, exist_ok=True)
 
-    env = make_custom_env(env_id=env_id, mini=mini, maxi=maxi)
+    env = make_sb3_env(env_id=env_id, mini=mini, maxi=maxi)
 
     model = algo(policy, env, verbose=1)
     model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
