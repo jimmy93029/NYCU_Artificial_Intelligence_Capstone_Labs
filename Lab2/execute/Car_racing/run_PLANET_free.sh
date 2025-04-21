@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ENV_NAME="CarRacing-v3"
+ENV_NAME="CarRacing-v2"
 ALGO="planet"
 DEVICE="cuda:0"
 SEED=42

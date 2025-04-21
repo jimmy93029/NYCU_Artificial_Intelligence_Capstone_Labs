@@ -2,6 +2,7 @@ import gymnasium as gym
 import numpy as np
 import cv2
 import torch
+from gymnasium import spaces
 from gymnasium.wrappers import TransformObservation, ResizeObservation
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 from stable_baselines3.common.monitor import Monitor
@@ -31,8 +32,13 @@ class BipedalWalkerActionConstraint(gym.ActionWrapper):
 
 # === Preprocessing for CarRacing ===
 def preprocess_car_racing(env):
-    env = TransformObservation(env, lambda obs: cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)[..., None])
-    env = ResizeObservation(env, shape=(84, 84))
+    def process(obs):
+        obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)         # (96, 96)
+        obs = cv2.resize(obs, (64, 64))                     # (84, 84)
+        obs = np.expand_dims(obs, axis=0)                  # (1, 84, 84)
+        return obs.astype(np.uint8)
+
+    env = TransformObservation(env, process)
     return env
 
 
@@ -61,6 +67,12 @@ def make_sb3_env(env_id, mini=-1, maxi=1):
 def make_mbrl_env(env_id, mini, maxi):
     env = gym.make(env_id)
     env = wrap_with_constraints(env, env_id, mini, maxi)
+    if "CarRacing" in env_id:
+        env = preprocess_car_racing(env)
+        # Patch observation space to match (1, 64, 64)
+        env.observation_space = spaces.Box(
+            low=0, high=255, shape=(1, 64, 64), dtype=np.uint8
+        )
     return env  
 
 
@@ -91,7 +103,6 @@ def bipedalwalker_reward_fn(act: torch.Tensor, next_obs: torch.Tensor) -> torch.
     torque_cost = 0.00035 * 80.0 * torch.abs(act).clamp(0, 1).sum(dim=1)
     reward = shaping - torque_cost
     return reward.view(-1, 1)
-
 
 def bipedalwalker_termination_fn(act: torch.Tensor, next_obs: torch.Tensor) -> torch.Tensor:
     """

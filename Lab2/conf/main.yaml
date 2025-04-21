@@ -20,8 +20,5 @@ log_dir: "${root_dir}/${log_subdir}"
 hydra:
   run:
     dir: ${log_dir}
-    # Disable timestamp
-    output_subdir: null
   sweep:
     dir: ${log_dir}
-    subdir: null

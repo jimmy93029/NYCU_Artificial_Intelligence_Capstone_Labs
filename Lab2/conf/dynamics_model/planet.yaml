@@ -1,9 +1,9 @@
 # @package _group_
 _target_: mbrl.models.PlaNetModel
-obs_shape: [3, 64, 64]
+obs_shape: [1, 64, 64]   # For PlaNet: grayscale input (1, 64, 64)
 obs_encoding_size: 1024
 encoder_config:
-  - [3, 32, 4, 2]
+  - [1, 32, 4, 2]
   - [32, 64, 4, 2]
   - [64, 128, 4, 2]
   - [128, 256, 4, 2]
@@ -12,8 +12,8 @@ decoder_config:
   - - [1024, 128, 5, 2]
     - [128, 64, 5, 2]
     - [64, 32, 6, 2]
-    - [32, 3, 6, 2]
-action_size: ???
+    - [32, 1, 6, 2]     
+action_size: ???         
 hidden_size_fcs: 200
 belief_size: 200
 latent_state_size: 30

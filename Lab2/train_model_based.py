@@ -19,7 +19,6 @@ def replay_csv_to_tensorboard(csv_path, writer, prefix="train"):
             if col != "step":
                 writer.add_scalar(f"{prefix}/{col}", row[col], row["step"])
 
-
 def train_mbrl(cfg: DictConfig):
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
@@ -35,16 +34,14 @@ def train_mbrl(cfg: DictConfig):
     else:
         raise ValueError(f"Unsupported algorithm: {cfg.algorithm.name}")
 
-    # Optional TensorBoard log
     csv_path = os.path.join(os.getcwd(), "train.csv")
     if os.path.exists(csv_path):
         writer = SummaryWriter(os.getcwd())
         replay_csv_to_tensorboard(csv_path, writer)
         writer.close()
 
-    print("✅ Training finished.")
+    print("\u2705 Training finished.")
     return agent
-
 
 def evaluate_mbrl(cfg: DictConfig):
     log_dir = os.getcwd()
@@ -56,6 +53,7 @@ def evaluate_mbrl(cfg: DictConfig):
     constraint_fn = make_action_constraint_fn(cfg.test_min, cfg.test_max)
 
     agent = create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir)
+    agent.reset()  # Ensure internal state is ready (especially for PlaNet)
 
     video_name = f"{cfg.env_id}_eval_trainmin{cfg.train_min}_trainmax{cfg.train_max}_testmin{cfg.test_min}_testmax{cfg.test_max}"
     video_dir = os.path.join(log_dir, "videos", video_name)
@@ -69,8 +67,7 @@ def evaluate_mbrl(cfg: DictConfig):
     )
 
     avg_reward = evaluate_agent(agent, test_env, constraint_fn=constraint_fn)
-    print(f"✅ Evaluation finished. Avg reward = {avg_reward:.2f}")
-
+    print(f"\u2705 Evaluation finished. Avg reward = {avg_reward:.2f}")
 
 def evaluate_agent(agent, env, num_episodes=10, constraint_fn=None):
     rewards = []
@@ -115,7 +112,6 @@ def create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir):
 
     return agent
 
-
 @hydra.main(config_path="conf", config_name="main")
 def main(cfg: DictConfig):
     if cfg.mode == "train":
@@ -124,7 +120,6 @@ def main(cfg: DictConfig):
         evaluate_mbrl(cfg)
     else:
         raise ValueError(f"Unsupported mode: {cfg.mode}")
-
 
 if __name__ == "__main__":
     main()
