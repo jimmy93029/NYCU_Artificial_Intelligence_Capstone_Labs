@@ -1,25 +1,24 @@
 #!/bin/bash
 
-ENV_NAME="Bipedal_Walker-v3"
+ENV_NAME="CarRacing-v3"
 ALGO="pets"
 DEVICE="cuda:0"
 SEED=42
 NOW=$(date +%Y%m%d_%H%M%S)
 
-mkdir -p info/debugs
-LOG_FILE="info/debugs/${ENV_NAME}_run_PETS_free_${NOW}.log"
+mkdir -p info/debugs/${ENV_NAME}
+LOG_FILE="info/debugs/${ENV_NAME}/${ENV_NAME}_run_PETS_free_${NOW}.log"
 echo "📄 Logging to $LOG_FILE"
 
 COMMON_FLAGS="\
-algorithm=pets \
+algorithm=${ALGO} \
 experiment=free \
-overrides=pets_Bipedal_Walker \
+overrides=pets_Car_Racing \
 dynamics_model=gaussian_mlp_ensemble \
 action_optimizer=cem \
 device=${DEVICE} \
 seed=${SEED} \
 save_video=true"
-
 
 (
 echo "🚀 Training with constraint [-1, 1]..."
