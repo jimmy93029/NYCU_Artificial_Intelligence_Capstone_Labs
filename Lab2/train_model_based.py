@@ -74,6 +74,11 @@ def evaluate_agent(agent, env, num_episodes=10, constraint_fn=None):
     for ep in range(num_episodes):
         obs, _ = env.reset(seed=ep)
         agent.reset()
+
+        # Patch: for PlaNet to avoid _current_posterior_sample being None
+        if hasattr(agent, "model_env") and isinstance(agent.model_env.dynamics_model, PlaNetModel):
+            agent.model_env.dynamics_model.reset_posterior()
+
         done = False
         total_reward = 0.0
 
@@ -84,9 +89,11 @@ def evaluate_agent(agent, env, num_episodes=10, constraint_fn=None):
             obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             total_reward += reward
-
+        
+        print(f"epoch {ep} with total rewards = {total_reward}")
         rewards.append(total_reward)
     return float(np.mean(rewards))
+
 
 def create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir):
     obs_shape = env.observation_space.shape

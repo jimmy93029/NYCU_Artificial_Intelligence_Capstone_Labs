@@ -4,7 +4,7 @@ term_fn: "default_term_fn"
 reward_fn: "default_reward_fn"
 learned_rewards: false
 
-num_steps: 200000           # Train longer due to complex dynamics
+num_steps: 10000          # Train longer due to complex dynamics
 trial_length: 1000          # Standard for BipedalWalker
 
 num_elites: 5               # Retain best 5 models from ensemble

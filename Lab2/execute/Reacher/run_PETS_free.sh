@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ENV_NAME="Bipedal_Walker-v3"
+ENV_NAME="Reacher-v2"
 ALGO="pets"
 DEVICE="cuda:0"
 SEED=42
@@ -13,17 +13,16 @@ echo "📄 Logging to $LOG_FILE"
 COMMON_FLAGS="\
 algorithm=pets \
 experiment=free \
-overrides=pets_Bipedal_Walker \
+overrides=pets_reacher \
 dynamics_model=gaussian_mlp_ensemble \
 action_optimizer=cem \
 device=${DEVICE} \
 seed=${SEED} \
 save_video=true"
 
-
 (
-# echo "🚀 Training with constraint [-1, 1]..."
-# python3 train_model_based.py ${COMMON_FLAGS} +train_min=-1 +train_max=1 +mode=train
+echo "🚀 Training with constraint [-1, 1]..."
+python3 train_model_based.py ${COMMON_FLAGS} +train_min=-1 +train_max=1 +mode=train
 
 echo
 echo "🔍 Testing with test constraint [-1, 1]..."

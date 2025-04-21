@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ENV_NAME="CarRacing-v2"
-ALGO="PPO"
+ENV_NAME="Reacher-v2"
+ALGO="A2C"
 TRAIN_MIN=-1
 TRAIN_MAX=1
 TIMESTEPS=200000

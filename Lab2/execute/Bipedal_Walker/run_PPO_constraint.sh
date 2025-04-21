@@ -1,9 +1,9 @@
 #!/bin/bash
 
-mkdir -p info/debugs
-
+ENV_NAME="Bipedal_Walker-v3"
+mkdir -p info/debugs/${ENV_NAME}
 timestamp=$(date +%Y%m%d_%H%M%S)
-log_file="info/debugs/Bipedal_Walker_run_PPO_constraint_${timestamp}.log"
+log_file="info/debugs/${ENV_NAME}/${ENV_NAME}_run_PPO_constraint_${timestamp}.log"
 
 (
 python3 <<EOF

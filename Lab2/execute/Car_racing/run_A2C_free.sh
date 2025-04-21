@@ -1,44 +1,46 @@
 #!/bin/bash
 
-mkdir -p info/debugs
+ENV_NAME="CarRacing-v2"
+ALGO="A2C"
+TRAIN_MIN=-1
+TRAIN_MAX=1
+TIMESTEPS=200000
+LOG_DIR="info/debugs"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="${LOG_DIR}/${ENV_NAME}_run_${ALGO}_free_${TIMESTAMP}.log"
 
-timestamp=$(date +%Y%m%d_%H%M%S)
-log_file="info/debugs/CarRacing_run_A2C_free_${timestamp}.log"
+mkdir -p "$LOG_DIR"
 
 (
-python3 <<EOF
-import numpy as np
-from train_model_free import train_sb3, evaluate_sb3
-from stable_baselines3 import A2C
+# === Train ===
+python3 train_model_free.py \
+  --env "$ENV_NAME" \
+  --algo "$ALGO" \
+  --train_min $TRAIN_MIN \
+  --train_max $TRAIN_MAX \
+  --timesteps $TIMESTEPS \
+  --mode train
 
-# Train A2C on CarRacing-v2 with full steering range [-1, 1]
-train_sb3(A2C, 'CarRacing-v2', total_timesteps=200_000, mini=-1, maxi=1)
+# === Test with same constraint ===
+python3 train_model_free.py \
+  --env "$ENV_NAME" \
+  --algo "$ALGO" \
+  --train_min $TRAIN_MIN \
+  --train_max $TRAIN_MAX \
+  --test_min $TRAIN_MIN \
+  --test_max $TRAIN_MAX \
+  --mode test
 
-# Evaluation 1: Same constraint
-a2c_rewards_1 = evaluate_sb3(
-    A2C,
-    model_path='info/models/CarRacing-v2_A2C_min-1_max1.zip',
-    env_id='CarRacing-v2',
-    train_min=-1,
-    train_max=1,
-    test_min=-1,
-    test_max=1
-)
-print(f"📊 Mean reward with test constraint [-1, 1]: {np.mean(a2c_rewards_1):.2f}")
+# === Test with tighter constraint ===
+python3 train_model_free.py \
+  --env "$ENV_NAME" \
+  --algo "$ALGO" \
+  --train_min $TRAIN_MIN \
+  --train_max $TRAIN_MAX \
+  --test_min -0.8 \
+  --test_max 0.8 \
+  --mode test
+) > "$LOG_FILE" 2>&1 &
 
-# Evaluation 2: Tighter test-time constraint
-a2c_rewards_2 = evaluate_sb3(
-    A2C,
-    model_path='info/models/CarRacing-v2_A2C_min-1_max1.zip',
-    env_id='CarRacing-v2',
-    train_min=-1,
-    train_max=1,
-    test_min=-0.8,
-    test_max=0.8
-)
-print(f"📊 Mean reward with test constraint [-0.8, 0.8]: {np.mean(a2c_rewards_2):.2f}")
-EOF
-) > "$log_file" 2>&1 &
-
-echo "🚀 A2C CarRacing training + evaluation launched in background."
-echo "📄 Logs: $log_file"
+echo "🚀 $ALGO training + evaluation on $ENV_NAME launched in background."
+echo "📄 Logs: $LOG_FILE"

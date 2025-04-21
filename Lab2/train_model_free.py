@@ -12,7 +12,7 @@ import os
 Base_dir = "info"
 
 # === Training Function ===
-def train_sb3(algo, env_id, total_timesteps=100_000, mini=-1, maxi=1):
+def train_sb3(algo, model_path, env_id, total_timesteps=100_000, mini=-1, maxi=1):
     policy = "CnnPolicy" if "ALE" in env_id or "CarRacing" in env_id else "MlpPolicy"
     algo_name = algo.__name__
 
@@ -26,7 +26,6 @@ def train_sb3(algo, env_id, total_timesteps=100_000, mini=-1, maxi=1):
 
     model.learn(total_timesteps=total_timesteps)
 
-    model_path = f"{Base_dir}/models/{env_id.replace('/', '_')}_{algo_name}_min{mini}_max{maxi}.zip"
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     model.save(model_path)
 
@@ -76,3 +75,52 @@ def evaluate_sb3(model_class, model_path, env_id, episodes=10, train_min=-1, tra
     env.close()
     print(f"✅ Finished. Video: {video_folder}")
     return rewards
+
+
+if __name__ == "__main__":
+    import argparse
+    import importlib
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", type=str, default="Reacher-v2")
+    parser.add_argument("--algo", type=str, default="PPO")  # PPO, A2C, SAC, etc.
+    parser.add_argument("--train_min", type=float, default=-1)
+    parser.add_argument("--train_max", type=float, default=1)
+    parser.add_argument("--test_min", type=float, default=None)
+    parser.add_argument("--test_max", type=float, default=None)
+    parser.add_argument("--timesteps", type=int, default=200_000)
+    parser.add_argument("--mode", type=str, choices=["train", "test", "both"], default="both")
+    args = parser.parse_args()
+
+    # Default test range = training range if not set
+    test_min = args.test_min if args.test_min is not None else args.train_min
+    test_max = args.test_max if args.test_max is not None else args.train_max
+
+    # Dynamically load SB3 algorithm
+    SB3 = importlib.import_module("stable_baselines3")
+    algo_class = getattr(SB3, args.algo)
+
+    model_path = f"{Base_dir}/models/{args.env.replace('/', '_')}_{args.algo}_min{args.train_min}_max{args.train_max}.zip"
+
+    # === Train ===
+    if args.mode in ["train", "both"]:
+        train_sb3(
+            algo_class,
+            model_path=model_path,
+            env_id=args.env,
+            total_timesteps=args.timesteps,
+            mini=args.train_min,
+            maxi=args.train_max
+        )
+
+    # === Test ===
+    if args.mode in ["test", "both"]:
+        evaluate_sb3(
+            algo_class,
+            model_path=model_path,
+            env_id=args.env,
+            train_min=args.train_min,
+            train_max=args.train_max,
+            test_min=test_min,
+            test_max=test_max,
+        )
