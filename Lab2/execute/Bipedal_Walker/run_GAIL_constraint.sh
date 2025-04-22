@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ENV_NAME="Reacher-v4"
+ENV_NAME="BipedalWalker-v3"
 ALGO="GAIL"
 TRAIN_MIN=-0.8
 TRAIN_MAX=0.8

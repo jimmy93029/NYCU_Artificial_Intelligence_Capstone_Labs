@@ -8,6 +8,8 @@ from gymnasium import spaces
 from gymnasium.wrappers import TransformObservation
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
+from imitation.data.wrappers import RolloutInfoWrapper
+from imitation.util.util import make_vec_env
 
 # === Constraint Wrappers ===
 class CarRacingSteeringConstraint(gym.ActionWrapper):
@@ -87,6 +89,20 @@ def make_mbrl_env(env_id, mini, maxi):
             low=0, high=255, shape=(1, 64, 64), dtype=np.uint8
         )
     return env
+
+def make_imitation_env(env_id, mini=-1, maxi=1, n_envs=8, seed=42):
+    def post_wrappers(env, _):
+        env = wrap_with_constraints(env, env_id, mini, maxi)
+        return RolloutInfoWrapper(env)
+
+    env = make_vec_env(
+        env_id,
+        rng=np.random.default_rng(seed),
+        n_envs=n_envs,
+        post_wrappers=[post_wrappers],
+    )
+    return env
+
 
 
 # === Constraint Function for Evaluation ===

@@ -1,13 +1,13 @@
 #!/bin/bash
 
 ENV_NAME="Reacher-v4"
-ALGO="GAIL"
-TRAIN_MIN=-0.8
-TRAIN_MAX=0.8
+ALGO="BC"
+TRAIN_MIN=-1
+TRAIN_MAX=1
 TIMESTEPS=200000
 LOG_DIR="info/debugs/${ENV_NAME}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="${LOG_DIR}/${ENV_NAME}_run_${ALGO}_constraint_${TIMESTAMP}.log"
+LOG_FILE="${LOG_DIR}/${ENV_NAME}_run_${ALGO}_free_${TIMESTAMP}.log"
 
 mkdir -p "$LOG_DIR"
 
@@ -28,6 +28,15 @@ python train_imitation.py \
     --train_min $TRAIN_MIN \
     --train_max $TRAIN_MAX
 
+# === Evaluation 1: Same constraint ===
+python train_imitation.py \
+    --env_id "$ENV_NAME" \
+    --algo "$ALGO" \
+    --mode evaluate \
+    --train_min $TRAIN_MIN \
+    --train_max $TRAIN_MAX \
+    --test_min $TRAIN_MIN \
+    --test_max $TRAIN_MAX
 
 # === Evaluation 2: Tighter constraint ===
 python train_imitation.py \

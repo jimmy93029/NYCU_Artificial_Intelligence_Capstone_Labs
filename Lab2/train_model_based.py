@@ -53,8 +53,7 @@ def evaluate_mbrl(cfg: DictConfig):
     reward_fn = bipedalwalker_reward_fn
     constraint_fn = make_action_constraint_fn(cfg.test_min, cfg.test_max)
 
-    agent = create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir)
-    agent.reset()  # Ensure internal state is ready (especially for PlaNet)
+    agent, model = create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir)
 
     video_name = f"{cfg.env_id}_eval_trainmin{cfg.train_min}_trainmax{cfg.train_max}_testmin{cfg.test_min}_testmax{cfg.test_max}"
     video_dir = os.path.join(log_dir, "videos", video_name)
@@ -67,34 +66,42 @@ def evaluate_mbrl(cfg: DictConfig):
         name_prefix=video_name
     )
 
-    avg_reward = evaluate_agent(agent, test_env, constraint_fn=constraint_fn)
-    print(f"\u2705 Evaluation finished. Avg reward = {avg_reward:.2f}")
+    evaluate_agent(agent, test_env, model=model, constraint_fn=constraint_fn)
 
-def evaluate_agent(agent, env, num_episodes=10, constraint_fn=None):
+
+
+def evaluate_agent(agent, env, model = None, num_episodes=10, constraint_fn=None):
     rewards = []
+
     for ep in range(num_episodes):
         obs, _ = env.reset(seed=ep)
-        if hasattr(agent, "reset"):
-            agent.reset(obs)
+        action = None  # initialize to None for update_posterior
 
-        # Patch: for PlaNet to avoid _current_posterior_sample being None
-        # if hasattr(agent, "model_env") and isinstance(agent.model_env.dynamics_model, PlaNetModel):
-        #     agent.model_env.dynamics_model.reset_posterior()
+        # Reset PlaNet state
+        agent.reset()
+        if model:
+            model.reset_posterior()
 
         done = False
         total_reward = 0.0
 
         while not done:
+            if model:
+                model.update_posterior(obs, action)
+
             action = agent.act(obs)
             if constraint_fn:
                 action = constraint_fn(action)
+
             obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             total_reward += reward
-        
-        print(f"epoch {ep} with total rewards = {total_reward}")
+
+        print(f"🎬 Episode {ep + 1}: total reward = {total_reward:.2f}")
         rewards.append(total_reward)
-    return float(np.mean(rewards))
+
+    avg_reward = float(np.mean(rewards))
+    print(f"✅ Average reward over {num_episodes} episodes: {avg_reward:.2f}")
 
 
 def create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir):
@@ -109,6 +116,7 @@ def create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir):
         agent = mbrl.planning.create_trajectory_optim_agent_for_model(
             model_env, cfg.algorithm.agent
         )
+        return agent, model
     elif cfg.algorithm.name == "pets":
         model = mbrl.util.common.create_one_dim_tr_model(cfg, obs_shape, act_shape)
         model.load(model_dir)
@@ -116,10 +124,10 @@ def create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir):
         agent = mbrl.planning.create_trajectory_optim_agent_for_model(
             model_env, cfg.algorithm.agent, num_particles=cfg.algorithm.num_particles
         )
+        return agent, None
     else:
         raise ValueError(f"Unsupported algorithm: {cfg.algorithm.name}")
-
-    return agent
+    
 
 @hydra.main(config_path="conf", config_name="main")
 def main(cfg: DictConfig):
