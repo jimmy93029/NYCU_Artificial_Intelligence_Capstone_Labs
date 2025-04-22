@@ -4,10 +4,11 @@ import numpy as np
 import torch
 import hydra
 from omegaconf import DictConfig
+import gymnasium as gym
 from mbrl.algorithms import pets, planet
 from torch.utils.tensorboard import SummaryWriter
 from gymnasium.wrappers import RecordVideo
-from MakeEnv import make_mbrl_env, make_action_constraint_fn, bipedalwalker_reward_fn, bipedalwalker_termination_fn
+from MakeEnv import make_mbrl_env, make_action_constraint_fn, bipedalwalker_reward_fn, bipedalwalker_termination_fn, wrap_with_constraints
 from mbrl.env.termination_fns import no_termination
 import pandas as pd
 import mbrl
@@ -48,7 +49,9 @@ def evaluate_mbrl(cfg: DictConfig):
     log_dir = os.getcwd()
     model_dir = os.path.join(log_dir)
 
-    env = make_mbrl_env(cfg.env_id, cfg.test_min, cfg.test_max)
+    env = gym.make(cfg.env_id)
+    env = wrap_with_constraints(env, cfg.env_id, cfg.test_min,cfg.test_max)
+
     term_fn = bipedalwalker_termination_fn
     reward_fn = bipedalwalker_reward_fn
     constraint_fn = make_action_constraint_fn(cfg.test_min, cfg.test_max)
