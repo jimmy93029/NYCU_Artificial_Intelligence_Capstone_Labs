@@ -1,5 +1,6 @@
 import os
 os.environ["SDL_VIDEODRIVER"] = "dummy"
+
 import numpy as np
 import torch
 import hydra
@@ -20,6 +21,7 @@ def replay_csv_to_tensorboard(csv_path, writer, prefix="train"):
         for col in df.columns:
             if col != "step":
                 writer.add_scalar(f"{prefix}/{col}", row[col], row["step"])
+
 
 def train_mbrl(cfg: DictConfig):
     np.random.seed(cfg.seed)
@@ -45,12 +47,14 @@ def train_mbrl(cfg: DictConfig):
     print("\u2705 Training finished.")
     return agent
 
+
 def evaluate_mbrl(cfg: DictConfig):
     log_dir = os.getcwd()
     model_dir = os.path.join(log_dir)
 
-    env = gym.make(cfg.env_id)
-    env = wrap_with_constraints(env, cfg.env_id, cfg.test_min,cfg.test_max)
+    # ✅ Add render_mode for video recording
+    env = gym.make(cfg.env_id, render_mode="rgb_array")
+    env = wrap_with_constraints(env, cfg.env_id, cfg.test_min, cfg.test_max)
 
     term_fn = bipedalwalker_termination_fn
     reward_fn = bipedalwalker_reward_fn
@@ -65,22 +69,20 @@ def evaluate_mbrl(cfg: DictConfig):
     test_env = RecordVideo(
         env,
         video_folder=video_dir,
-        episode_trigger=lambda ep: ep == 0,
+        episode_trigger=lambda ep: ep == 0,  # ✅ or True to record all
         name_prefix=video_name
     )
 
     evaluate_agent(agent, test_env, model=model, constraint_fn=constraint_fn)
 
 
-
-def evaluate_agent(agent, env, model = None, num_episodes=10, constraint_fn=None):
+def evaluate_agent(agent, env, model=None, num_episodes=10, constraint_fn=None):
     rewards = []
 
     for ep in range(num_episodes):
         obs, _ = env.reset(seed=ep)
-        action = None  # initialize to None for update_posterior
+        action = None
 
-        # Reset PlaNet state
         agent.reset()
         if model:
             model.reset_posterior()
@@ -106,6 +108,9 @@ def evaluate_agent(agent, env, model = None, num_episodes=10, constraint_fn=None
     avg_reward = float(np.mean(rewards))
     print(f"✅ Average reward over {num_episodes} episodes: {avg_reward:.2f}")
 
+    # ✅ Ensure videos are written
+    env.close()
+
 
 def create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir):
     obs_shape = env.observation_space.shape
@@ -130,7 +135,7 @@ def create_agent_and_model_env(cfg, env, term_fn, reward_fn, model_dir):
         return agent, None
     else:
         raise ValueError(f"Unsupported algorithm: {cfg.algorithm.name}")
-    
+
 
 @hydra.main(config_path="conf", config_name="main")
 def main(cfg: DictConfig):
@@ -140,6 +145,7 @@ def main(cfg: DictConfig):
         evaluate_mbrl(cfg)
     else:
         raise ValueError(f"Unsupported mode: {cfg.mode}")
+
 
 if __name__ == "__main__":
     main()
