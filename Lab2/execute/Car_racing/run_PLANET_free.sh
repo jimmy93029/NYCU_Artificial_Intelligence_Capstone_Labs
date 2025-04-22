@@ -20,8 +20,8 @@ seed=${SEED} \
 save_video=true"
 
 (
-echo "🚀 Training with constraint [-1, 1]..."
-python3 train_model_based.py ${COMMON_FLAGS} +train_min=-1 +train_max=1 +mode=train
+# echo "🚀 Training with constraint [-1, 1]..."
+# python3 train_model_based.py ${COMMON_FLAGS} +train_min=-1 +train_max=1 +mode=train
 
 echo
 echo "🔍 Testing with test constraint [-1, 1]..."

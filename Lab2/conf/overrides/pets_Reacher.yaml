@@ -1,5 +1,5 @@
 # @package _group_
-env: "pets_reacher"
+env: "Reacher-v4"
 learned_rewards: true
 num_steps: 15000
 trial_length: 1000

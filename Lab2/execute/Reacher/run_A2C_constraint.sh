@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==== Configurable Parameters ====
-ENV_NAME="Reacher-v2"
+ENV_NAME="Reacher-v4"
 ALGO="A2C"
 TRAIN_MIN=-0.8
 TRAIN_MAX=0.8

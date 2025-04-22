@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ENV_NAME="Reacher-v2"
+ENV_NAME="Reacher-v4"
 ALGO="PPO"
 TRAIN_MIN=-1
 TRAIN_MAX=1

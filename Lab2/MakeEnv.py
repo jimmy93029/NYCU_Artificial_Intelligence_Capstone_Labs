@@ -1,12 +1,13 @@
-import gymnasium as gym
+# env_creator.py
+
+import gymnasium as gym  # ✅ switched from gym to gymnasium
 import numpy as np
 import cv2
 import torch
 from gymnasium import spaces
-from gymnasium.wrappers import TransformObservation, ResizeObservation
-from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
+from gymnasium.wrappers import TransformObservation
+from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
-
 
 # === Constraint Wrappers ===
 class CarRacingSteeringConstraint(gym.ActionWrapper):
@@ -30,12 +31,22 @@ class BipedalWalkerActionConstraint(gym.ActionWrapper):
         return np.clip(action, self.min_action, self.max_action)
 
 
+class ReacherActionConstraint(gym.ActionWrapper):
+    def __init__(self, env, mini=-1.0, maxi=1.0):
+        super().__init__(env)
+        self.min_action = mini
+        self.max_action = maxi
+
+    def action(self, action):
+        return np.clip(action, self.min_action, self.max_action)
+
+
 # === Preprocessing for CarRacing ===
 def preprocess_car_racing(env):
     def process(obs):
-        obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)         # (96, 96)
-        obs = cv2.resize(obs, (64, 64))                     # (84, 84)
-        obs = np.expand_dims(obs, axis=0)                  # (1, 84, 84)
+        obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+        obs = cv2.resize(obs, (64, 64))
+        obs = np.expand_dims(obs, axis=0)
         return obs.astype(np.uint8)
 
     env = TransformObservation(env, process)
@@ -48,32 +59,34 @@ def wrap_with_constraints(env, env_id, mini=-1, maxi=1):
         env = CarRacingSteeringConstraint(env, mini, maxi)
     elif "BipedalWalker" in env_id:
         env = BipedalWalkerActionConstraint(env, mini, maxi)
+    elif "Reacher" in env_id:
+        env = ReacherActionConstraint(env, mini, maxi)
     return env
 
 
-# === For SB3 Training ===
+# === For SB3 / Imitation Training ===
 def make_sb3_env(env_id, mini=-1, maxi=1):
-    env = gym.make(env_id)
-    env = Monitor(env)
-    if "CarRacing" in env_id:
-        env = preprocess_car_racing(env)
-        env = DummyVecEnv([lambda: env])
-        env = VecFrameStack(env, n_stack=4)
-    env = wrap_with_constraints(env, env_id, mini, maxi)
-    return env
+    def _make():
+        env = gym.make(env_id, render_mode="rgb_array")
+        if "CarRacing" in env_id:
+            env = preprocess_car_racing(env)
+        env = wrap_with_constraints(env, env_id, mini, maxi)
+        env = Monitor(env)
+        return env
+
+    return DummyVecEnv([_make])
 
 
-# === For MBRL Training ===
+# === For MBRL Training (same gymnasium) ===
 def make_mbrl_env(env_id, mini, maxi):
     env = gym.make(env_id)
     env = wrap_with_constraints(env, env_id, mini, maxi)
     if "CarRacing" in env_id:
         env = preprocess_car_racing(env)
-        # Patch observation space to match (1, 64, 64)
         env.observation_space = spaces.Box(
             low=0, high=255, shape=(1, 64, 64), dtype=np.uint8
         )
-    return env  
+    return env
 
 
 # === Constraint Function for Evaluation ===
@@ -83,32 +96,17 @@ def make_action_constraint_fn(min_val, max_val):
     return constrain
 
 
+# === Reward/Termination Functions for BipedalWalker (used in MBRL)
 def bipedalwalker_reward_fn(act: torch.Tensor, next_obs: torch.Tensor) -> torch.Tensor:
-    """
-    Approximate BipedalWalker-v3 reward shaping, as used in Gym implementation.
-
-    next_obs: tensor of shape (B, 24)
-      - [0]: hull angle
-      - [1]: hull angular velocity
-      - [2]: horizontal velocity (proxy for pos[0] derivative)
-      - [3]: vertical velocity
-    act: tensor of shape (B, 4)
-
-    Returns: reward (B, 1)
-    """
-    vel_x = next_obs[:, 2]  # proxy of pos[0] increase
+    vel_x = next_obs[:, 2]
     angle = next_obs[:, 0]
-
     shaping = 130 * vel_x - 5.0 * torch.abs(angle)
     torque_cost = 0.00035 * 80.0 * torch.abs(act).clamp(0, 1).sum(dim=1)
     reward = shaping - torque_cost
     return reward.view(-1, 1)
 
+
 def bipedalwalker_termination_fn(act: torch.Tensor, next_obs: torch.Tensor) -> torch.Tensor:
-    """
-    Done if the agent falls (vertical velocity too negative)
-    or moves beyond the terrain.
-    """
     vel_y = next_obs[:, 3]
-    done = (vel_y < -1.0) | (next_obs[:, 2] > 1.5)  # falls too fast or runs too far
+    done = (vel_y < -1.0) | (next_obs[:, 2] > 1.5)
     return done.view(-1, 1)

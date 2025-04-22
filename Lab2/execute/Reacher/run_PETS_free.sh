@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ENV_NAME="Reacher-v2"
+ENV_NAME="Reacher-v4"
 ALGO="pets"
 DEVICE="cuda:0"
 SEED=42
@@ -13,7 +13,7 @@ echo "📄 Logging to $LOG_FILE"
 COMMON_FLAGS="\
 algorithm=pets \
 experiment=free \
-overrides=pets_reacher \
+overrides=pets_Reacher \
 dynamics_model=gaussian_mlp_ensemble \
 action_optimizer=cem \
 device=${DEVICE} \

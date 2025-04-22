@@ -1,4 +1,5 @@
 import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 import numpy as np
 import torch
 import hydra
@@ -73,11 +74,12 @@ def evaluate_agent(agent, env, num_episodes=10, constraint_fn=None):
     rewards = []
     for ep in range(num_episodes):
         obs, _ = env.reset(seed=ep)
-        agent.reset()
+        if hasattr(agent, "reset"):
+            agent.reset(obs)
 
         # Patch: for PlaNet to avoid _current_posterior_sample being None
-        if hasattr(agent, "model_env") and isinstance(agent.model_env.dynamics_model, PlaNetModel):
-            agent.model_env.dynamics_model.reset_posterior()
+        # if hasattr(agent, "model_env") and isinstance(agent.model_env.dynamics_model, PlaNetModel):
+        #     agent.model_env.dynamics_model.reset_posterior()
 
         done = False
         total_reward = 0.0
