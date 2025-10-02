@@ -1,0 +1,25 @@
+# @package _group_
+env: "BipedalWalker-v3"
+term_fn: "default_term_fn"
+reward_fn: "default_reward_fn"
+learned_rewards: false
+
+num_steps: 10000          # Train longer due to complex dynamics
+trial_length: 1000          # Standard for BipedalWalker
+
+num_elites: 5               # Retain best 5 models from ensemble
+model_lr: 3e-4              # Slightly higher LR helps with non-linearity
+model_wd: 1e-5              # Regularization to avoid overfitting
+model_batch_size: 256       # Larger batch for better gradient estimation
+validation_ratio: 0.1       # Enables early stopping
+freq_train_model: 250       # Retrain often to stay up-to-date
+patience: 10                # Early stop patience
+num_epochs_train_model: 20  # Fewer epochs to avoid overfitting
+
+planning_horizon: 20        # Shorter horizon reduces model bias
+cem_num_iters: 5            # Good tradeoff between speed and convergence
+cem_elite_ratio: 0.1        # Retain top 10% candidates
+cem_population_size: 500    # Higher sampling = better exploration
+cem_alpha: 0.1              # Conservative updates
+cem_clipped_normal: false   # Use standard normal unless instability observed
+
